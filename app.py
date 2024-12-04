@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from models import UserModel, RefreshTokenRequest
-from database import SessionLocal, User
+from database import SessionLocal, User, Role
 import re
 from utils import (
     create_access_token,
@@ -22,6 +22,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 @app.post("/signup", summary="Create new user")
 def create_user(data: UserModel):
     with SessionLocal() as session:
+        session.expire_on_commit = False
+
         if not re.match(r"[^@]+@[^@]+\.[^@]+", data.email):
             raise HTTPException(status_code=422, detail="Invalid email address")
 
@@ -39,7 +41,10 @@ def create_user(data: UserModel):
         )
         session.add(new_user)
         session.commit()
-        session.refresh(new_user)
+
+        reader = session.query(Role).filter(Role.name == "reader").first()
+        new_user.roles.append(reader)
+        session.commit()
 
     access_token = create_access_token({"sub": new_user.id})
     refresh_token = create_refresh_token({"sub": new_user.id})
