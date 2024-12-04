@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
-from models import UserModel, RefreshTokenRequest
-from database import SessionLocal, User, Role
+from models import UserModel, RefreshTokenRequest, PostModel
+from database import SessionLocal, User, Role, Post, Tag, Keyword, UserRole
 import re
 from utils import (
     create_access_token,
@@ -83,3 +83,36 @@ def refresh_token(refresh_token_request: RefreshTokenRequest):
         access_token = create_access_token({"sub": user_id})
         return {"access_token": access_token}
     raise HTTPException(status_code=403, detail="Invalid token")
+
+
+@app.post("/post", summary="Create a new post")
+def create_post(post: PostModel, token: str = Depends(oauth2_scheme)):
+    title = post.title
+    content = post.content
+
+    decoded_token = decode_token(token)
+    user_id = decoded_token["sub"]
+    with SessionLocal() as session:
+        session.expire_on_commit = False
+
+        current_user = session.query(User).filter(User.id == user_id).first()
+        author_role = session.query(Role).filter(Role.name == "author").first()
+        admin_role = session.query(Role).filter(Role.name == "admin").first()
+        if current_user is not None and (
+            author_role in current_user.roles or admin_role in current_user.roles
+        ):
+            new_post = Post(
+                title=title,
+                content=content,
+                author_id=user_id,
+                create_datetime=datetime.utcnow(),
+                update_datetime=datetime.utcnow(),
+            )
+            session.add(new_post)
+            session.commit()
+
+            return {"post_id": new_post.id}
+        else:
+            raise HTTPException(
+                status_code=401, detail="You are a reader and cannot create posts."
+            )

@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from datetime import datetime
 
 
 class UserModel(BaseModel):
@@ -8,3 +9,8 @@ class UserModel(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+
+class PostModel(BaseModel):
+    title: str
+    content: str

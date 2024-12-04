@@ -4,6 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 import os
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 DATABASE = os.getenv("DATABASE")
@@ -42,7 +43,7 @@ class Post(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String, nullable=False)
     content = Column(Text, nullable=False)
-    author_id = Column(Integer, ForeignKey("user.id"))
+    author_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     create_datetime = Column(DateTime, nullable=False)
     update_datetime = Column(DateTime, nullable=False)
     author = relationship("User")
