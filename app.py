@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Query, Path, Body
+from fastapi import FastAPI, HTTPException, Depends, Query
 from models import UserModel, RefreshTokenRequest, PostModel, PostUpdateRequest
 from database import SessionLocal, User, Role, Post, Tag
 from utils import (
@@ -7,6 +7,8 @@ from utils import (
     hash_password,
     verify_password,
     decode_token,
+    is_admin,
+    is_author,
 )
 from sqlalchemy import exists
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -93,10 +95,9 @@ def create_post(post: PostModel, token: str = Depends(oauth2_scheme)):
         session.expire_on_commit = False
 
         current_user = session.query(User).filter(User.id == user_id).first()
-        author_role = session.query(Role).filter(Role.name == "author").first()
-        admin_role = session.query(Role).filter(Role.name == "admin").first()
-        if current_user is not None and (
-            author_role in current_user.roles or admin_role in current_user.roles
+
+        if is_admin(session, current_user.username) or is_author(
+            session, current_user.username
         ):
             new_post = Post(
                 title=title,
@@ -120,7 +121,7 @@ def create_post(post: PostModel, token: str = Depends(oauth2_scheme)):
                     new_post.tags.append(existing_tag)
                     session.commit()
 
-            return new_post
+            return {"message": "Post created successfully.", "post_id": new_post.id}
         else:
             raise HTTPException(
                 status_code=401, detail="You are a reader and cannot create posts."
@@ -179,13 +180,24 @@ def list_posts(
 @app.put("/post/{post_id}", summary="Update a post")
 def update_post(
     post_data: PostUpdateRequest,
-    post_id: int = Path(..., description="The ID of the post to update"),
+    post_id: int,
+    token: str = Depends(oauth2_scheme),
 ):
     with SessionLocal() as session:
         post = session.query(Post).filter(Post.id == post_id).first()
-
         if not post:
             raise HTTPException(status_code=404, detail="Post not found")
+
+        decoded_token = decode_token(token)
+        user_id = decoded_token["sub"]
+        current_user = session.query(User).filter(User.id == user_id).first()
+
+        if not is_admin(session, current_user.username) and not (
+            is_author(session, current_user.username) and post.author == current_user
+        ):
+            raise HTTPException(
+                status_code=401, detail="You do not have access to edit this post."
+            )
 
         if post_data.title is not None:
             post.title = post_data.title

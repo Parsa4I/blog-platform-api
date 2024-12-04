@@ -3,6 +3,9 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import os
 import bcrypt
+from sqlalchemy.orm import Session
+from sqlalchemy import exists
+from database import User, Role
 
 
 load_dotenv()
@@ -45,3 +48,19 @@ def hash_password(plain_password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
+
+
+def is_admin(session: Session, username: str) -> bool:
+    return (
+        session.query(User)
+        .join(User.roles)
+        .filter(User.username == username, Role.name == "admin")
+    ).first() is not None
+
+
+def is_author(session: Session, username: str) -> bool:
+    return (
+        session.query(User)
+        .join(User.roles)
+        .filter(User.username == username, Role.name == "author")
+    ).first() is not None
