@@ -16,7 +16,7 @@ class User(Base):
     __tablename__ = "user"
 
     id = Column(Integer, primary_key=True)
-    email = Column(String, unique=True, nullable=False)
+    username = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=False)
     roles = relationship("Role", secondary="user_role")
 

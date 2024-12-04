@@ -3,7 +3,7 @@ from datetime import datetime
 
 
 class UserModel(BaseModel):
-    email: str
+    username: str
     password: str
 
 

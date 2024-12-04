@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from models import UserModel, RefreshTokenRequest, PostModel
 from database import SessionLocal, User, Role, Post, Tag, UserRole
 import re
@@ -24,11 +24,8 @@ def create_user(data: UserModel):
     with SessionLocal() as session:
         session.expire_on_commit = False
 
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", data.email):
-            raise HTTPException(status_code=422, detail="Invalid email address")
-
-        if session.query(exists().where(User.email == data.email)).scalar():
-            raise HTTPException(status_code=422, detail="Email already exists.")
+        if session.query(exists().where(User.username == data.username)).scalar():
+            raise HTTPException(status_code=422, detail="Username already exists.")
 
         if len(data.password) < 8:
             raise HTTPException(
@@ -36,7 +33,7 @@ def create_user(data: UserModel):
             )
 
         new_user = User(
-            email=data.email,
+            username=data.username,
             password=hash_password(data.password),
         )
         session.add(new_user)
@@ -58,7 +55,7 @@ def create_user(data: UserModel):
 @app.post("/token", summary="Get JWT access and refresh tokens")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     with SessionLocal() as session:
-        user = session.query(User).filter(User.email == form_data.username).first()
+        user = session.query(User).filter(User.username == form_data.username).first()
 
         if user and verify_password(form_data.password, user.password):
             access_token = create_access_token({"sub": user.id})
@@ -69,7 +66,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
                 "refresh_token": refresh_token,
             }
         else:
-            raise HTTPException(status_code=403, detail="Invalid email/password")
+            raise HTTPException(status_code=403, detail="Invalid username/password")
 
 
 @app.post("/refresh_token", summary="Get a new access token")
@@ -132,7 +129,52 @@ def create_post(post: PostModel, token: str = Depends(oauth2_scheme)):
 
 
 @app.get("/post", summary="List posts")
-def list_posts(page: int = 1):
+def list_posts(
+    page: int = 1,
+    tags: str = Query(
+        "",
+        description="comma-separated tags",
+    ),
+    author: str = None,
+    start_date: str = Query(None, description="Start date in YYYY-MM-DD format"),
+    end_date: str = Query(None, description="End date in YYYY-MM-DD format"),
+):
     with SessionLocal() as session:
-        posts = session.query(Post).all()[(page - 1) * 10 : page * 10]
-        return posts
+        posts = session.query(Post)
+        if tags:
+            str_tags = tags.split(",")
+            str_tags = list(map(str.strip, str_tags))
+            tag_objs = []
+            for str_tag in str_tags:
+                tag_obj = session.query(Tag).filter(Tag.name == str_tag).first()
+                if tag_obj:
+                    tag_objs.append(tag_obj)
+
+            posts = (
+                posts.join(Post.tags)
+                .filter(Tag.id.in_([tag.id for tag in tag_objs]))
+                .distinct()
+            )
+
+        if author:
+            author_objs = (
+                session.query(User).filter(User.username.ilike(f"%{author}%")).all()
+            )
+            authors_ids = [a.id for a in author_objs]
+            posts = posts.filter(Post.author_id.in_(authors_ids))
+
+        if start_date:
+            try:
+                start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
+                posts = posts.filter(Post.create_datetime >= start_datetime)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format")
+
+        if end_date:
+            try:
+                end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
+                posts = posts.filter(Post.create_datetime <= end_datetime)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format")
+
+        return posts.all()[(page - 1) * 10 : page * 10]
