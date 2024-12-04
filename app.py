@@ -230,6 +230,34 @@ def update_post(
         return {"message": "Post updated successfully", "post_id": post.id}
 
 
+@app.delete("/post/{post_id}", summary="Delete a post with its ID")
+def delete_post(
+    post_id: int,
+    token: str = Depends(oauth2_scheme),
+):
+    with SessionLocal() as session:
+        post = session.query(Post).filter(Post.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        current_user = get_current_user(session, token)
+
+        if not is_admin(session, current_user.username) and not (
+            is_author(session, current_user.username) and post.author == current_user
+        ):
+            raise HTTPException(
+                status_code=401, detail="You do not have access to edit this post."
+            )
+
+        post_comments = session.query(Comment).filter(Comment.post_id == post.id).all()
+        for comment in post_comments:
+            session.delete(comment)
+        session.delete(post)
+        session.commit()
+
+        return {"message": "Post successfully deleted."}
+
+
 @app.post("/comment/{post_id}", summary="Comment on a post")
 def create_comment(
     post_id: int, comment_data: CommentModel, token: str = Depends(oauth2_scheme)
