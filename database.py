@@ -48,7 +48,6 @@ class Post(Base):
     update_datetime = Column(DateTime, nullable=False)
     author = relationship("User")
     tags = relationship("Tag", secondary="post_tag")
-    keywords = relationship("Keyword")
     comments = relationship("Comment")
 
 
@@ -66,15 +65,6 @@ class PostTag(Base):
     id = Column(Integer, primary_key=True)
     post_id = Column(Integer, ForeignKey("post.id"))
     tag_id = Column(Integer, ForeignKey("tag.id"))
-
-
-class Keyword(Base):
-    __tablename__ = "keyword"
-
-    id = Column(Integer, primary_key=True)
-    word = Column(String, nullable=False)
-    post_id = Column(Integer, ForeignKey("post.id"))
-    post = relationship("Post")
 
 
 class Comment(Base):

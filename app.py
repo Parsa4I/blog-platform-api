@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from models import UserModel, RefreshTokenRequest, PostModel
-from database import SessionLocal, User, Role, Post, Tag, Keyword, UserRole
+from database import SessionLocal, User, Role, Post, Tag, UserRole
 import re
 from utils import (
     create_access_token,
@@ -124,8 +124,15 @@ def create_post(post: PostModel, token: str = Depends(oauth2_scheme)):
                     new_post.tags.append(existing_tag)
                     session.commit()
 
-            return {"post_id": new_post.id}
+            return new_post
         else:
             raise HTTPException(
                 status_code=401, detail="You are a reader and cannot create posts."
             )
+
+
+@app.get("/post", summary="List posts")
+def list_posts(page: int = 1):
+    with SessionLocal() as session:
+        posts = session.query(Post).all()[(page - 1) * 10 : page * 10]
+        return posts
