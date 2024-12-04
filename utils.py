@@ -15,7 +15,7 @@ def create_access_token(subject: dict) -> str:
         subject[key] = str(value)
 
     if "exp" not in subject:
-        subject["exp"] = datetime.utcnow() + timedelta(seconds=60)
+        subject["exp"] = datetime.utcnow() + timedelta(minutes=60)
     access_token = jwt.encode(subject, SECRET_KEY, "HS256")
     return access_token
 
@@ -25,7 +25,7 @@ def create_refresh_token(subject: dict) -> str:
         subject[key] = str(value)
 
     if "exp" not in subject:
-        subject["exp"] = datetime.utcnow() + timedelta(minutes=60)
+        subject["exp"] = datetime.utcnow() + timedelta(days=1)
     refresh_token = jwt.encode(subject, SECRET_KEY, "HS256")
     return refresh_token
 
