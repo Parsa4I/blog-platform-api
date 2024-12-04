@@ -50,7 +50,7 @@ def create_user(data: UserModel):
     }
 
 
-@app.post("/token")
+@app.post("/token", summary="Get JWT access and refresh tokens")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     with SessionLocal() as session:
         user = session.query(User).filter(User.email == form_data.username).first()
@@ -67,7 +67,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
             raise HTTPException(status_code=403, detail="Invalid email/password")
 
 
-@app.post("/refresh_token")
+@app.post("/refresh_token", summary="Get a new access token")
 def refresh_token(refresh_token_request: RefreshTokenRequest):
     decoded_token = decode_token(refresh_token_request.refresh_token)
     if (
