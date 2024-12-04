@@ -89,6 +89,7 @@ def refresh_token(refresh_token_request: RefreshTokenRequest):
 def create_post(post: PostModel, token: str = Depends(oauth2_scheme)):
     title = post.title
     content = post.content
+    tags = post.tags
 
     decoded_token = decode_token(token)
     user_id = decoded_token["sub"]
@@ -110,6 +111,18 @@ def create_post(post: PostModel, token: str = Depends(oauth2_scheme)):
             )
             session.add(new_post)
             session.commit()
+
+            for tag in tags:
+                if not session.query(exists().where(Tag.name == tag)).scalar():
+                    new_tag = Tag(name=tag)
+                    session.add(new_tag)
+                    session.commit()
+                    new_post.tags.append(new_tag)
+                    session.commit()
+                else:
+                    existing_tag = session.query(Tag).where(Tag.name == tag).first()
+                    new_post.tags.append(existing_tag)
+                    session.commit()
 
             return {"post_id": new_post.id}
         else:

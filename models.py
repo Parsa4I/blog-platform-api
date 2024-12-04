@@ -14,3 +14,4 @@ class RefreshTokenRequest(BaseModel):
 class PostModel(BaseModel):
     title: str
     content: str
+    tags: list[str]
