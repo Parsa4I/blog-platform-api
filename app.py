@@ -1,7 +1,6 @@
-from fastapi import FastAPI, HTTPException, Depends, Query
-from models import UserModel, RefreshTokenRequest, PostModel
-from database import SessionLocal, User, Role, Post, Tag, UserRole
-import re
+from fastapi import FastAPI, HTTPException, Depends, Query, Path, Body
+from models import UserModel, RefreshTokenRequest, PostModel, PostUpdateRequest
+from database import SessionLocal, User, Role, Post, Tag
 from utils import (
     create_access_token,
     create_refresh_token,
@@ -131,10 +130,7 @@ def create_post(post: PostModel, token: str = Depends(oauth2_scheme)):
 @app.get("/post", summary="List posts")
 def list_posts(
     page: int = 1,
-    tags: str = Query(
-        "",
-        description="comma-separated tags",
-    ),
+    tags: str = Query("", description="comma-separated tags"),
     author: str = None,
     start_date: str = Query(None, description="Start date in YYYY-MM-DD format"),
     end_date: str = Query(None, description="End date in YYYY-MM-DD format"),
@@ -178,3 +174,41 @@ def list_posts(
                 raise HTTPException(status_code=400, detail="Invalid end_date format")
 
         return posts.all()[(page - 1) * 10 : page * 10]
+
+
+@app.put("/post/{post_id}", summary="Update a post")
+def update_post(
+    post_data: PostUpdateRequest,
+    post_id: int = Path(..., description="The ID of the post to update"),
+):
+    with SessionLocal() as session:
+        post = session.query(Post).filter(Post.id == post_id).first()
+
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        if post_data.title is not None:
+            post.title = post_data.title
+
+        if post_data.content is not None:
+            post.content = post_data.content
+
+        if post_data.tags is not None:
+            new_tag_names = set(post_data.tags)
+            current_tag_names = {tag.name for tag in post.tags}
+
+            tags_to_add = new_tag_names - current_tag_names
+            tags_to_remove = current_tag_names - new_tag_names
+
+            post.tags = [tag for tag in post.tags if tag.name not in tags_to_remove]
+
+            for tag_name in tags_to_add:
+                tag_obj = session.query(Tag).filter(Tag.name == tag_name).first()
+                if not tag_obj:
+                    tag_obj = Tag(name=tag_name)
+                    session.add(tag_obj)
+                post.tags.append(tag_obj)
+
+        session.commit()
+
+        return {"message": "Post updated successfully", "post_id": post.id}

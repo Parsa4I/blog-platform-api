@@ -15,3 +15,9 @@ class PostModel(BaseModel):
     title: str
     content: str
     tags: list[str]
+
+
+class PostUpdateRequest(BaseModel):
+    title: str = None
+    content: str = None
+    tags: list[str] = None
