@@ -17,7 +17,11 @@ class PostModel(BaseModel):
     tags: list[str]
 
 
-class PostUpdateRequest(BaseModel):
+class PostUpdateModel(BaseModel):
     title: str = None
     content: str = None
     tags: list[str] = None
+
+
+class CommentModel(BaseModel):
+    content: str

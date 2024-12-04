@@ -1,6 +1,12 @@
 from fastapi import FastAPI, HTTPException, Depends, Query
-from models import UserModel, RefreshTokenRequest, PostModel, PostUpdateRequest
-from database import SessionLocal, User, Role, Post, Tag
+from models import (
+    UserModel,
+    RefreshTokenRequest,
+    PostModel,
+    PostUpdateModel,
+    CommentModel,
+)
+from database import SessionLocal, User, Role, Post, Tag, Comment
 from utils import (
     create_access_token,
     create_refresh_token,
@@ -9,6 +15,7 @@ from utils import (
     decode_token,
     is_admin,
     is_author,
+    get_current_user,
 )
 from sqlalchemy import exists
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -89,12 +96,11 @@ def create_post(post: PostModel, token: str = Depends(oauth2_scheme)):
     content = post.content
     tags = post.tags
 
-    decoded_token = decode_token(token)
-    user_id = decoded_token["sub"]
     with SessionLocal() as session:
         session.expire_on_commit = False
 
-        current_user = session.query(User).filter(User.id == user_id).first()
+        current_user = get_current_user(session, token)
+        user_id = current_user.id
 
         if is_admin(session, current_user.username) or is_author(
             session, current_user.username
@@ -179,7 +185,7 @@ def list_posts(
 
 @app.put("/post/{post_id}", summary="Update a post")
 def update_post(
-    post_data: PostUpdateRequest,
+    post_data: PostUpdateModel,
     post_id: int,
     token: str = Depends(oauth2_scheme),
 ):
@@ -188,9 +194,7 @@ def update_post(
         if not post:
             raise HTTPException(status_code=404, detail="Post not found")
 
-        decoded_token = decode_token(token)
-        user_id = decoded_token["sub"]
-        current_user = session.query(User).filter(User.id == user_id).first()
+        current_user = get_current_user(session, token)
 
         if not is_admin(session, current_user.username) and not (
             is_author(session, current_user.username) and post.author == current_user
@@ -224,3 +228,36 @@ def update_post(
         session.commit()
 
         return {"message": "Post updated successfully", "post_id": post.id}
+
+
+@app.post("/comment/{post_id}", summary="Comment on a post")
+def create_comment(
+    post_id: int, comment_data: CommentModel, token: str = Depends(oauth2_scheme)
+):
+    with SessionLocal() as session:
+        post = session.query(Post).filter(Post.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        current_user = get_current_user(session, token)
+
+        comment = Comment(
+            content=comment_data.content,
+            post_id=post_id,
+            user_id=current_user.id,
+        )
+        session.add(comment)
+        session.commit()
+
+        return {"message": "Comment created successfully.", "comment_id": comment.id}
+
+
+@app.get("/comment/{post_id}", summary="List comments for a post")
+def list_comments(post_id: int):
+    with SessionLocal() as session:
+        post = session.query(Post).filter(Post.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        comments = session.query(Comment).filter(Comment.post == post).all()
+        return comments

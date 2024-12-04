@@ -64,3 +64,9 @@ def is_author(session: Session, username: str) -> bool:
         .join(User.roles)
         .filter(User.username == username, Role.name == "author")
     ).first() is not None
+
+
+def get_current_user(session: Session, token):
+    decoded_token = decode_token(token)
+    user_id = decoded_token["sub"]
+    return session.query(User).filter(User.id == user_id).first()
