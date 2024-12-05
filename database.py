@@ -2,39 +2,35 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import os
-from dotenv import load_dotenv
 
-
-load_dotenv()
-
-DATABASE = os.getenv("DATABASE")
+DATABASE = os.environ.get("DATABASE")
 
 Base = declarative_base()
 
 
 class User(Base):
-    __tablename__ = "user"
+    __tablename__ = "blog_user"
 
     id = Column(Integer, primary_key=True)
     username = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=False)
-    roles = relationship("Role", secondary="user_role")
+    roles = relationship("Role", secondary="blog_user_role")
 
 
 class Role(Base):
-    __tablename__ = "role"
+    __tablename__ = "blog_role"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
-    users = relationship("User", secondary="user_role")
+    users = relationship("User", secondary="blog_user_role")
 
 
 class UserRole(Base):
-    __tablename__ = "user_role"
+    __tablename__ = "blog_user_role"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("user.id"))
-    role_id = Column(Integer, ForeignKey("role.id"))
+    user_id = Column(Integer, ForeignKey("blog_user.id"))
+    role_id = Column(Integer, ForeignKey("blog_role.id"))
 
 
 class Post(Base):
@@ -43,7 +39,7 @@ class Post(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String, nullable=False)
     content = Column(Text, nullable=False)
-    author_id = Column(Integer, ForeignKey("user.id"), nullable=False)
+    author_id = Column(Integer, ForeignKey("blog_user.id"), nullable=False)
     create_datetime = Column(DateTime, nullable=False)
     update_datetime = Column(DateTime, nullable=False)
     author = relationship("User")
@@ -73,7 +69,7 @@ class Comment(Base):
     id = Column(Integer, primary_key=True)
     content = Column(String, nullable=False)
     post_id = Column(Integer, ForeignKey("post.id"))
-    user_id = Column(Integer, ForeignKey("user.id"))
+    user_id = Column(Integer, ForeignKey("blog_user.id"))
     post = relationship("Post")
     user = relationship("User")
 

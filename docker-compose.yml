@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: .
+    command: sh -c "./wait-for-it.sh db:5432 && python ./database.py && fastapi run"
+    ports:
+      - 8000:8000
+    environment:
+      - DATABASE=postgresql+psycopg2://blog_api:blog_api@db:5432/blog_api
+      - SECRET_KEY=_}_KYd(90ciOr_+Ehn%s6n!4ufW%5jIR7z*rA,;QAI!z$-)+@;&LH*QSycFJ$uD
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16.2
+    volumes:
+      - blog_api_db:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_DB=blog_api
+      - POSTGRES_USER=blog_api
+      - POSTGRES_PASSWORD=blog_api
+
+volumes:
+  blog_api_db:

@@ -1,16 +1,12 @@
 import jwt
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 import os
 import bcrypt
 from sqlalchemy.orm import Session
-from sqlalchemy import exists
 from database import User, Role
 
 
-load_dotenv()
-
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.environ.get("SECRET_KEY")
 
 
 def create_access_token(subject: dict) -> str:
