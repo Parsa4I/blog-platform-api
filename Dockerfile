@@ -7,7 +7,8 @@ EXPOSE 8000
 
 WORKDIR /app
 
-COPY . .
+COPY ./requirements.txt .
+RUN pip install -r requirements.txt
 
-RUN pip install -r requirements.txt && \
-    chmod a+x ./wait-for-it.sh
+COPY . .
+RUN chmod a+x ./wait-for-it.sh
