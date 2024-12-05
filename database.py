@@ -84,9 +84,14 @@ if __name__ == "__main__":
     Base.metadata.create_all(engine)
 
     with SessionLocal() as session:
-        admin_role = Role(name="admin")
-        author_role = Role(name="author")
-        reader_role = Role(name="reader")
+        try:
+            admin_role = Role(name="admin")
+            author_role = Role(name="author")
+            reader_role = Role(name="reader")
 
-        session.add_all([admin_role, author_role, reader_role])
-        session.commit()
+            session.add_all([admin_role, author_role, reader_role])
+            session.commit()
+
+            print("Initial roles created successfully.")
+        except:
+            print("admin, author and reader role are already created.")
